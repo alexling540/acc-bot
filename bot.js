@@ -1,5 +1,5 @@
+require('dotenv').config();
 const fs = require('fs');
-const { botConfig } = require('./config.js');
 const { firestore } = require('./firestore.js');
 const Discord = require('discord.js');
 
@@ -8,14 +8,13 @@ client.commands = new Discord.Collection();
 
 // Dynamically add commands
 // https://github.com/discordjs/guide/tree/master/code-samples/command-handling/dynamic-commands
+const prefix = '$';
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
 	const command = require(`./commands/${file}`);
 	client.commands.set(command.name, command);
 }
-
-const prefix = botConfig.prefix;
 
 client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
@@ -39,4 +38,4 @@ client.on('message', async (message) => {
   }
 });
 
-client.login(botConfig.clientId);
+client.login(process.env.BOT_TOKEN);
