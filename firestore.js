@@ -1,6 +1,7 @@
 require('dotenv').config();
 const firebase = require('firebase/app');
 require('firebase/firestore');
+require('firebase/database');
 require('firebase/auth');
 
 const firebaseConfig = {
@@ -13,8 +14,11 @@ const firebaseConfig = {
   appId: process.env.FIREBASE_APP_ID
 };
 
-const firestore = firebase.initializeApp(firebaseConfig).firestore();
+const app = firebase.initializeApp(firebaseConfig);
+const firestore = app.firestore();
+const database = app.database();
 
 module.exports = {
-  firestore
+  firestore,
+  database
 };
