@@ -91,7 +91,7 @@ function help(message) {
 }
 
 // work on making a better list
-async function list(message) {
+async function listEmbeds(message) {
   const embedCollection = await firestoreEmbedsRef(message.guild.id).get();
 
   let msg = '';
@@ -104,12 +104,12 @@ async function list(message) {
   message.channel.send(msg);
 }
 
-// work on this queue
-async function queue(message, args) {
+// TODO: work on this queue, use chron?
+async function queueEmbed(message, args) {
 
 }
 
-async function show(message, args) {
+async function showEmbed(message, args) {
   const embedId = args[0];
   const embedDocData = await getEmbedData(message, embedId);
 
@@ -119,14 +119,16 @@ async function show(message, args) {
   }
 }
 
-async function new_(message) {
+// TODO: MAKE NEW EMBED
+async function newEmbed(message) {
 
 }
 
-async function edit(message, args) {
+async function editEmbed(message, args) {
   const guildId = message.guild.id;
+  const ref = databaseEmbedRef(guildId);
 
-  const snapshot = await database.ref(guildId).once('value');
+  const snapshot = await ref.once('value');
   if (snapshot.exists()) {
     message.channel.send('There is already an embed being edited, save that embed before editing another.')
       .catch(err => logError(guildId, err));
@@ -137,7 +139,7 @@ async function edit(message, args) {
   const embedDocData = await getEmbedData(message, embedId);
 
   if (embedDocData !== null) {
-    database.ref(guildId).set({
+    ref.set({
       id: embedId,
       ...embedDocData
     }).then(() => {
@@ -149,9 +151,9 @@ async function edit(message, args) {
   }
 }
 
-async function save(message) {
+async function saveEmbed(message) {
   const guildId = message.guild.id;
-  const ref = database.ref(guildId);
+  const ref = databaseEmbedRef(guildId);
 
   const snapshot = await ref.once('value');
   if (!snapshot.exists()) {
@@ -177,7 +179,7 @@ async function save(message) {
     .catch(err => logError(guildId, err));
 }
 
-async function delete_(message, args) {
+async function deleteEmbed(message, args) {
   const embedId = args[0];
   const guildId = message.guild.id;
   const userId = message.member.id;
@@ -214,6 +216,163 @@ async function delete_(message, args) {
   }
 }
 
+async function setFieldMap(message, field, subcommands, args) {
+  const guildId = message.guild.id;
+  const ref = databaseEmbedRef(guildId);
+  const fieldRef = ref.child('data').child(field);
+
+  const subcommand = args.shift();
+
+  if (!subcommands.includes(subcommand)) {
+    message.channel.send(`Invalid subcommand for setField ${field}`)
+      .catch(err => logError(guildId, err));
+  } else {
+    try {
+      await fieldRef.child(subcommand).set(args.join(' '));
+      return true;
+    } catch(err) {
+      message.channel.send('Error updating field.')
+        .catch(err => logError(guildId, err));
+      logError(guildId, err);
+    }
+  } 
+  return false;
+}
+
+async function setFieldSingleWord(message, field, args) {
+  const guildId = message.guild.id;
+  const ref = databaseEmbedRef(guildId);
+  const fieldRef = ref.child('data').child(field);
+
+  try {
+    await fieldRef.set(args[0]);
+    return true;
+  } catch(err) {
+    message.channel.send('Error updating field.')
+      .catch(err => logError(guildId, err));
+    logError(guildId, err);
+  }
+  return false;
+}
+
+async function setFieldMultiWord(message, field, args) {
+  const guildId = message.guild.id;
+  const ref = databaseEmbedRef(guildId);
+  const fieldRef = ref.child('data').child(field);
+
+  try {
+    await fieldRef.set(args.join(' '));
+    return true;
+  } catch (err) {
+    message.channel.send('Error updating field.')
+      .catch(err => logError(guildId, err));
+    logError(guildId, err);
+  }
+  return false;
+}
+
+const validFields = ['author', 'color', 'description', 'footer', 'image', 'thumbnail', 'title', 'url'];
+
+async function setField(message, args) {
+  const guildId = message.guild.id;
+  const ref = databaseEmbedRef(guildId);
+
+  const snapshot = await ref.once('value');
+  if (!snapshot.exists()) {
+    message.channel.send('There is no embed being edited, try editing an embed before trying to add a field.')
+      .catch(err => logError(guildId, err));
+    return;
+  }
+
+  const field = args.shift();
+  if (typeof field === 'undefined' || !validFields.includes(field)) {
+    message.channel.send('There is no such field.')
+      .catch(err => logError(guildId, err));
+    return;
+  }
+
+  if (args.length == 0) {
+    message.channel.send('No arguments given for field.')
+      .catch(err => logError(guildId, err));
+    return;
+  }
+
+  let shouldShow = false;
+
+  switch (field) {
+    case 'author':
+      shouldShow = await setFieldMap(message, field, ['name', 'icon_url', 'url'], args);
+      break;
+    case 'footer':
+      shouldShow = await setFieldMap(message, field, ['text', 'icon_url'], args);
+      break;
+    case 'image':
+    case 'thumbnail':
+      shouldShow = await setFieldMap(message, field, ['url'], args);
+      break;
+    case 'color':
+    case 'url':
+      shouldShow = await setFieldSingleWord(message, field, args);
+      break;
+    case 'description':
+    case 'title':
+      shouldShow = await setFieldMultiWord(message, field, args);
+      break;
+  }
+
+  if (shouldShow) {
+    const newSnapshot = await ref.once('value');
+    const edit = newSnapshot.val();
+    message.channel.send({ embed: edit.data })
+      .catch(err => logError(guildId, err));
+  }
+}
+
+// TODO: Add dynamic fields
+async function addField(message, args) {
+
+}
+
+// TODO: DO DELETE FIELDS
+async function deleteField(message, args) {
+  const guildId = message.guild.id;
+  const ref = databaseEmbedRef(guildId);
+
+  const snapshot = await ref.once('value');
+  if (!snapshot.exists()) {
+    message.channel.send('There is no embed being edited, try editing an embed before trying to remove a field.')
+      .catch(err => logError(guildId, err));
+    return;
+  }
+
+  const field = args.shift();
+  if (typeof field === 'undefined' || !validFields.includes(field)) {
+    message.channel.send('There is no such field.')
+      .catch(err => logError(guildId, err));
+    return;
+  }
+
+  let shouldShow = false;
+
+  switch (field) {
+    case 'author':
+      shouldShow = await setFieldAuthor(message, args);
+      break;
+    case 'footer':
+      shouldShow = await setFieldFooter(message, args);
+      break;
+    case 'color':
+    case 'url':
+    case 'description':
+    case 'title':
+      shouldShow = await removeSimpleField(message, field, args);
+      break;
+    case 'field':
+      shouldShow = await removeField_(message, args);
+      break;
+  }
+}
+
 module.exports = {
   name: 'embed',
   execute(message, args) {
@@ -224,31 +383,34 @@ module.exports = {
         help(message);
         break;
       case 'list':
-        list(message);
+        listEmbeds(message);
         break;
       case 'queue':
-        queue(message, args);
+        queueEmbed(message, args);
         break;
       case 'show':
-        show(message, args);
+        showEmbed(message, args);
         break;
       case 'new':
-        new_(message);
+        newEmbed(message);
         break;
       case 'edit':
-        edit(message, args);
+        editEmbed(message, args);
         break;
       case 'save':
-        save(message);
+        saveEmbed(message);
         break;
       case 'delete':
-        delete_(message, args);
+        deleteEmbed(message, args);
         break;
-      case 'add':
+      case 'setField':
+        setField(message, args);
         break;
-      case 'update':
+      case 'addField':
+        addField(message, args);
         break;
-      case 'delete':
+      case 'deleteField':
+        deleteField(message, args);
         break;
       default:
         message.channel.send('Hmm, that\'s not a command, try $embed help.')
