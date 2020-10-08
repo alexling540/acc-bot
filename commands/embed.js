@@ -28,7 +28,11 @@ async function getEmbedData(message, embedId) {
   return embedDoc.data();
 }
 
-function help(message) {
+async function setLastModified(guildId) {
+  return databaseEmbedRef(guildId).child('metadata').child('lastModified').set(firebase.database.ServerValue.TIMESTAMP);
+}
+
+function help(message, args) {
   const embed = new Discord.MessageEmbed()
     .setTitle('$embed Help')
     .setDescription('Documentation for subcommands related to embed. Callable using ``$embed [subcommand] [*args]``')
@@ -120,9 +124,17 @@ async function showEmbed(message, args) {
   }
 }
 
-// TODO: MAKE NEW EMBED
-async function newEmbed(message) {
+async function newEmbed(message, args) {
+  const guildId = message.guild.id;
+  const ref = databaseEmbedRef(guildId);
 
+  const newId = (await ref.push()).key.substring(1);
+  ref.update({
+    id: newId,
+    metadata: {
+      lastModified: firebase.database.ServerValue.TIMESTAMP
+    }
+  });
 }
 
 async function editEmbed(message, args) {
@@ -140,15 +152,18 @@ async function editEmbed(message, args) {
   const embedDocData = await getEmbedData(message, embedId);
 
   if (embedDocData !== null) {
-    ref.set({
-      id: embedId,
-      ...embedDocData
-    }).then(() => {
-      message.channel.send(`Now editing embed with id ${embedId}.`)
+    try {
+      await ref.set({
+        id: embedId,
+        ...embedDocData
+      });
+      await message.channel.send(`Now editing embed with id ${embedId}.`)
         .catch(err => logError(guildId, err));
-    }).catch((err) => {
+      message.channel.send({ embed: embedDocData.data })
+        .catch(err => logError(guildId, err));
+    } catch(err) {
       logError(guildId, err);
-    });
+    };
   }
 }
 
@@ -166,8 +181,12 @@ async function saveEmbed(message) {
   const edit = snapshot.val();
   
   try {
+    let newData = {};
+    if (typeof edit.data !== 'undefined') {
+      newData = edit.data;
+    }
     await firestoreEmbedsRef(guildId).doc(edit.id).set({
-      data: edit.data,
+      data: newData,
       metadata: edit.metadata
     });
   } catch(err) {
@@ -216,10 +235,6 @@ async function deleteEmbed(message, args) {
     msg.reactions.removeAll()
       .catch(err => logError(guildId, err));
   }
-}
-
-async function setLastModified(guildId) {
-  return databaseEmbedRef(guildId).child('metadata').child('lastModified').set(firebase.database.ServerValue.TIMESTAMP);
 }
 
 async function setFieldMap(message, field, subcommands, args) {
@@ -395,7 +410,81 @@ async function addField(message, args) {
     .catch(err => logError(guildId, err));
 }
 
-// TODO: DO DELETE FIELDS
+async function removeFieldSimple(message, field) {
+  const guildId = message.guild.id;
+  const ref = databaseEmbedRef(guildId);
+  const fieldRef = ref.child('data').child(field);
+
+  try {
+    await fieldRef.remove();
+    await setLastModified(guildId);
+    return true;
+  } catch(err) {
+    message.channel.send('Error removing field.')
+    .catch(err => logError(guildId, err));
+    logError(guildId, err);
+  }
+  return false;
+}
+
+async function removeFieldMap(message, field, subcommands, args) {
+  const guildId = message.guild.id;
+
+  if (args.length === 0) {
+    return await removeFieldSimple(message, field);
+  }
+
+  const subcommand = args.shift();
+  if (!subcommands.includes(subcommand)) {
+    message.channel.send(`Invalid subcommand for removeField ${field}`)
+      .catch(err => logError(guildId, err));
+  } else {
+    return await removeFieldSimple(message, `${field}/${subcommand}`);
+  }
+  return false;
+}
+
+async function removeField(message, args) {
+  const guildId = message.guild.id;
+  const ref = databaseEmbedRef(guildId);
+
+  const fieldIndex = args.shift();
+  if (typeof fieldIndex === 'undefined' || fieldIndex === null) {
+    message.channel.send('Not enough arguments')
+      .catch(err => logError(guildId, err));
+    return false;
+  }
+
+  const fieldsRef = ref.child('data').child('fields');
+  const fieldsSnapshot = await fieldsRef.once('value');
+  const fieldsVal = fieldsSnapshot.val();
+
+  let fieldsArray = [];
+  if (fieldsVal === null || typeof fieldsVal === 'undefined') {
+    message.channel.send('No fields to remove.')
+      .catch(err => logError(guildId, err));
+    return false;
+  }
+  fieldsArray = Object.values(fieldsSnapshot.val());
+  if (fieldIndex >= fieldsArray.length) {
+    message.channel.send('Index out of range.')
+      .catch(err => logError(guildId, err));
+    return false;
+  }
+  fieldsArray.splice(fieldIndex, 1);
+
+  try {
+    await fieldsRef.set(fieldsArray);
+    await setLastModified(guildId);
+    return true;
+  } catch (err) {
+    message.channel.send('Error updating field.')
+      .catch(err => logError(guildId, err));
+    logError(guildId, err);
+  }
+  return false;
+}
+
 async function deleteField(message, args) {
   const guildId = message.guild.id;
   const ref = databaseEmbedRef(guildId);
@@ -408,7 +497,7 @@ async function deleteField(message, args) {
   }
 
   const field = args.shift();
-  if (typeof field === 'undefined' || !validFields.includes([...validFields,'field'])) {
+  if (typeof field === 'undefined' || ![...validFields,'field'].includes(field)) {
     message.channel.send('There is no such field.')
       .catch(err => logError(guildId, err));
     return;
@@ -418,14 +507,20 @@ async function deleteField(message, args) {
 
   switch (field) {
     case 'author':
+      shouldShow = await removeFieldMap(message, field, ['name', 'icon_url', 'url'], args);
+      break;
     case 'footer':
-      shouldShow = await removeFieldMap(message, args);
+      shouldShow = await removeFieldMap(message, field, ['text', 'icon_url'], args);
+      break;
+    case 'image':
+    case 'thumbnail':
+      shouldShow = await removeFieldMap(message, field, ['url'], args);
       break;
     case 'color':
     case 'url':
     case 'description':
     case 'title':
-      shouldShow = await removeFieldSimple(message, field, args);
+      shouldShow = await removeFieldSimple(message, field);
       break;
     case 'field':
       shouldShow = await removeField(message, args);
@@ -447,7 +542,7 @@ module.exports = {
 
     switch (subcommand) {
       case 'help':
-        help(message);
+        help(message, args);
         break;
       case 'list':
         listEmbeds(message);
@@ -459,7 +554,7 @@ module.exports = {
         showEmbed(message, args);
         break;
       case 'new':
-        newEmbed(message);
+        newEmbed(message, args);
         break;
       case 'edit':
         editEmbed(message, args);
