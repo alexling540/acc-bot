@@ -186,6 +186,40 @@ async function editEmbed(message, args) {
   }
 }
 
+async function cancelEditEmbed(message) {
+  const guildId = message.guild.id;
+  const userId = message.member.id;
+  const ref = databaseEmbedRef(guildId);
+
+  const msg = await message.channel.send('Are you sure you want to revert your edits?')
+    .catch(err => logError(guildId, err));
+  await msg.react('✔️').catch(err => logError(guildId, err));
+  await msg.react('❌').catch(err => logError(guildId, err));
+
+  const filter = (reaction, user) => ['✔️',  '❌'].includes(reaction.emoji.name) && user.id == userId;
+  await msg.awaitReactions(filter, { max: 1, time: 15000 }).then(async (collection) => {
+    const reaction = collection.first();
+
+    if (reaction.emoji.name === '✔️') {
+      try {
+        await ref.remove();
+        msg.channel.send('Changes to embed reverted.')
+          .catch(err => logError(guildId, err));
+      } catch(err) {
+        logError(guildId, err);
+        message.channel.send('There was an error reverting changes.')
+          .catch(err => logError(guildId, err));
+      }
+    } else {
+      await msg.channel.send('No changes reverted.')
+        .catch(err => logError(guildId, err));
+    }
+  }).catch(() => {
+    msg.channel.send('No response. No changes reverted.')
+      .catch(err => logError(guildId, err));
+  });
+}
+
 async function saveEmbed(message) {
   const guildId = message.guild.id;
   const ref = databaseEmbedRef(guildId);
@@ -208,13 +242,14 @@ async function saveEmbed(message) {
       data: newData,
       metadata: edit.metadata
     });
+    await ref.remove();
   } catch(err) {
     logError(guildId, err);
-    message.channel.send('There was an error saving the document');
+    message.channel.send('There was an error saving the document')
+      .catch(err => logError(guildId, err));
     return;
   }
-  await ref.remove()
-    .catch(err => logError(guildId, err));
+
   message.channel.send(`Successfully saved embed with id \`\`${edit.id}\`\`.`)
     .catch(err => logError(guildId, err));
 }
@@ -239,10 +274,15 @@ async function deleteEmbed(message, args) {
       const reaction = collection.first();
 
       if (reaction.emoji.name === '✔️') {
-        await firestoreEmbedsRef(guildId).doc(embedId).delete()
-          .catch(err => logError(guildId, err));
-        await msg.channel.send('Embed deleted.')
-          .catch(err => logError(guildId, err));
+        try {
+          await firestoreEmbedsRef(guildId).doc(embedId).delete();
+          await msg.channel.send('Embed deleted.')
+            .catch(err => logError(guildId, err));
+        } catch(err) {
+          logError(guildId, err);
+          message.channel.send('There was an error deleting the embed.')
+            .catch(err => logError(guildId, err));
+        }
       } else {
         await msg.channel.send('Embed deletion cancelled.')
           .catch(err => logError(guildId, err));
@@ -580,6 +620,9 @@ module.exports = {
         break;
       case 'save':
         saveEmbed(message);
+        break;
+      case 'cancel':
+        cancelEditEmbed(message);
         break;
       case 'delete':
         deleteEmbed(message, args);
