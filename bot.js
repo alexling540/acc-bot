@@ -21,7 +21,11 @@ client.once('ready', () => {
 });
 
 client.on('guildCreate', async (guild) => {
-  await firestore.doc(`/servers/${guild.id}`).set();
+  const serverRef = firestore.doc(`/servers/${guild.id}`);
+  const snapshot = await serverRef.get();
+  if (!snapshot.exists) {
+    await serverRef.set({});
+  }
 });
 
 client.on('message', async (message) => {
@@ -32,9 +36,9 @@ client.on('message', async (message) => {
 
   try {
     await client.commands.get(command).execute(message, args);
-  } catch (error) {
-    console.error(error);
-    message.reply('there was an error trying to execute that command!');
+  } catch (err) {
+    console.error(`[${message.guild.id}] ${err}`);
+    message.reply('There was an error trying to execute that command!');
   }
 });
 
