@@ -1,3 +1,4 @@
+const firebase = require('firebase/app');
 const { firestore, database } = require('../firestore.js');
 const Discord = require('discord.js');
 
@@ -168,9 +169,10 @@ async function saveEmbed(message) {
     await firestoreEmbedsRef(guildId).doc(edit.id).set({
       data: edit.data,
       metadata: edit.metadata
-    }).catch(err => logError(guildId, err));
+    });
   } catch(err) {
     logError(guildId, err);
+    message.channel.send('There was an error saving the document');
     return;
   }
   await ref.remove()
@@ -216,6 +218,10 @@ async function deleteEmbed(message, args) {
   }
 }
 
+async function setLastModified(guildId) {
+  return databaseEmbedRef(guildId).child('metadata').child('lastModified').set(firebase.database.ServerValue.TIMESTAMP);
+}
+
 async function setFieldMap(message, field, subcommands, args) {
   const guildId = message.guild.id;
   const ref = databaseEmbedRef(guildId);
@@ -229,6 +235,7 @@ async function setFieldMap(message, field, subcommands, args) {
   } else {
     try {
       await fieldRef.child(subcommand).set(args.join(' '));
+      await setLastModified(guildId);
       return true;
     } catch(err) {
       message.channel.send('Error updating field.')
@@ -246,6 +253,7 @@ async function setFieldSingleWord(message, field, args) {
 
   try {
     await fieldRef.set(args[0]);
+    await setLastModified(guildId);
     return true;
   } catch(err) {
     message.channel.send('Error updating field.')
@@ -262,6 +270,7 @@ async function setFieldMultiWord(message, field, args) {
 
   try {
     await fieldRef.set(args.join(' '));
+    await setLastModified(guildId);
     return true;
   } catch (err) {
     message.channel.send('Error updating field.')
@@ -291,7 +300,7 @@ async function setField(message, args) {
     return;
   }
 
-  if (args.length == 0) {
+  if (args.length === 0) {
     message.channel.send('No arguments given for field.')
       .catch(err => logError(guildId, err));
     return;
@@ -328,9 +337,62 @@ async function setField(message, args) {
   }
 }
 
-// TODO: Add dynamic fields
 async function addField(message, args) {
+  const guildId = message.guild.id;
+  const ref = databaseEmbedRef(guildId);
 
+  const snapshot = await ref.once('value');
+  if (!snapshot.exists()) {
+    message.channel.send('There is no embed being edited, try editing an embed before trying to add a field.')
+      .catch(err => logError(guildId, err));
+    return;
+  }
+
+  if (args.length === 0) {
+    message.channel.send('No arguments given for field.')
+      .catch(err => logError(guildId, err));
+    return;
+  }
+
+  const fieldsRef = ref.child('data').child('fields');
+  const fieldsSnapshot = await fieldsRef.once('value');
+  const fieldsVal = fieldsSnapshot.val();
+
+  let fieldsArray = [];
+  if (fieldsVal !== null && typeof fieldsVal !== 'undefined') {
+    fieldsArray = Object.values(fieldsSnapshot.val());
+  }
+
+  let args_ = args.join(' ').split('|');
+  let newField = {};
+  if (args_.length > 1) {
+    newField.name = args_[0].trim();
+    newField.value = args_[1].trim();
+  } else {
+    message.channel.send('Not enough arguments')
+      .catch(err => logError(guildId, err));
+    return;
+  }
+  if (args_.length > 2) {
+    newField.inline = args_[2].trim() === 'inline';
+  }
+
+  fieldsArray.push(newField);
+
+  try {
+    await fieldsRef.set(fieldsArray);
+    await setLastModified(guildId);
+  } catch (err) {
+    message.channel.send('Error updating field.')
+      .catch(err => logError(guildId, err));
+    logError(guildId, err);
+    return;
+  }
+
+  const newSnapshot = await ref.once('value');
+  const edit = newSnapshot.val();
+  message.channel.send({ embed: edit.data })
+    .catch(err => logError(guildId, err));
 }
 
 // TODO: DO DELETE FIELDS
@@ -346,7 +408,7 @@ async function deleteField(message, args) {
   }
 
   const field = args.shift();
-  if (typeof field === 'undefined' || !validFields.includes(field)) {
+  if (typeof field === 'undefined' || !validFields.includes([...validFields,'field'])) {
     message.channel.send('There is no such field.')
       .catch(err => logError(guildId, err));
     return;
@@ -356,20 +418,25 @@ async function deleteField(message, args) {
 
   switch (field) {
     case 'author':
-      shouldShow = await setFieldAuthor(message, args);
-      break;
     case 'footer':
-      shouldShow = await setFieldFooter(message, args);
+      shouldShow = await removeFieldMap(message, args);
       break;
     case 'color':
     case 'url':
     case 'description':
     case 'title':
-      shouldShow = await removeSimpleField(message, field, args);
+      shouldShow = await removeFieldSimple(message, field, args);
       break;
     case 'field':
-      shouldShow = await removeField_(message, args);
+      shouldShow = await removeField(message, args);
       break;
+  }
+
+  if (shouldShow) {
+    const newSnapshot = await ref.once('value');
+    const edit = newSnapshot.val();
+    message.channel.send({ embed: edit.data })
+      .catch(err => logError(guildId, err));
   }
 }
 
