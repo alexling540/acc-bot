@@ -22,7 +22,7 @@ async function getEmbedData(message, embedId) {
 
   const embedDoc = await firestoreEmbedsRef(message.guild.id).doc(embedId).get();
   if (!embedDoc.exists) {
-    message.channel.send(`No such embed with id ${embedId}.`);
+    message.channel.send(`No such embed with id \`\`${embedId}\`\`.`);
     return null;
   }
   return embedDoc.data();
@@ -128,13 +128,32 @@ async function newEmbed(message, args) {
   const guildId = message.guild.id;
   const ref = databaseEmbedRef(guildId);
 
-  const newId = (await ref.push()).key.substring(1);
-  ref.update({
-    id: newId,
-    metadata: {
-      lastModified: firebase.database.ServerValue.TIMESTAMP
+  const embedId = args.shift();
+  if (typeof embedId !== 'undefined') {
+
+    const embedExists = (await firestoreEmbedsRef(message.guild.id).doc(embedId).get()).exists;
+    if (embedExists) {
+      message.channel.send(`Embed with id \`\`${embedId}\`\` already exists.`)
+        .catch(err => logError(guildId, err));
+      return;
     }
-  });
+  }
+
+  const newId = embedId || (await ref.push()).key.substring(1);
+  try {
+    await ref.update({
+      id: newId,
+      metadata: {
+        lastModified: firebase.database.ServerValue.TIMESTAMP
+      }
+    });
+    message.channel.send(`Embed with id \`\`${newId}\`\` created.`)
+      .catch(err => logError(guildId, err));
+  } catch(err) {
+    message.channel.send('There was an issue creating a new embed.')
+      .catch(err => logError(guildId, err));
+    logError(guildId, err);
+  }
 }
 
 async function editEmbed(message, args) {
@@ -157,7 +176,7 @@ async function editEmbed(message, args) {
         id: embedId,
         ...embedDocData
       });
-      await message.channel.send(`Now editing embed with id ${embedId}.`)
+      await message.channel.send(`Now editing embed with id \`\`${embedId}\`\`.`)
         .catch(err => logError(guildId, err));
       message.channel.send({ embed: embedDocData.data })
         .catch(err => logError(guildId, err));
@@ -196,7 +215,7 @@ async function saveEmbed(message) {
   }
   await ref.remove()
     .catch(err => logError(guildId, err));
-  message.channel.send(`Successfully saved embed with id ${edit.id}.`)
+  message.channel.send(`Successfully saved embed with id \`\`${edit.id}\`\`.`)
     .catch(err => logError(guildId, err));
 }
 
