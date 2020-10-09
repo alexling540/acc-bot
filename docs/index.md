@@ -6,9 +6,11 @@ You can invite the bot to your server by clicking [here](https://discord.com/api
 
 ## Commands
 * [Embeds](embed)
+* [Google](google)
+* [Star Wars](starwars)
 
 ## Contributing
-Interested in contributing to the bot or want to know how the bot is structured? Click [here](contributing)!
+Interested in contributing to the bot or want to know how the bot is structured? Click [here](contribute)!
 
 ## Contact
 Find Alex L or Patrick Apgar in the ACC Discord for any questions or comments!
