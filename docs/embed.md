@@ -138,7 +138,7 @@ This subcommand will delete the embed with the given `embed_id`. If the given `e
   - field_name: A specific field's name
   - args: Specific arguments given to the `field_name`, see [below](#field-name) for more details.
 
-This subcommand will set a value based on `args` to the field `field_name`. If the `field_name` is invalid, then no field will be added and the user will be notified.
+This subcommand will set a value based on `args` to the field `field_name`. If the `field_name` is invalid, then no field will be added and the user will be notified. We will call fields with only one argument, `value`, simple fields, and others complex fields. For simple fields, `args` will simply be `value`. For complex fields, users must provide a subfield and its corresponding value.
 
 [↑ Top](#embeds)
 
@@ -151,7 +151,7 @@ This subcommand will set a value based on `args` to the field `field_name`. If t
   - $embed deleteField author
   - $embed deleteField author name
   
-This subcommand will remove a value or values based on the `field_name` from the field `field_name`. If the `field_name` is invalid, then no field will be deleted and the user will be notified. For fields with complex args and if `args` are left empty, then the entire field will be deleted. Unlike the separation of `setField` and `addField`, custom fields may be deleted using this subcommand. To delete custom field, set `field_name` as "field" and the `args` as the index of the custom field (starting at 0).
+This subcommand will remove a value or values based on the `field_name` from the field `field_name`. If the `field_name` is invalid, then no field will be deleted and the user will be notified. We will call fields with only one argument, `value`, simple fields, and others complex fields. For simple fields, simply pass in `field_name` with no `args`. For complex fields, if `args` are left empty, then the entire field will be deleted. Otherwise, specify which subfield with `args`. Unlike the separation of `setField` and `addField`, custom fields may be deleted using this subcommand. To delete custom field, set `field_name` as "field" and the `args` as the index of the custom field (starting at 0).
 
 [↑ Top](#embeds)
 
@@ -162,8 +162,8 @@ This subcommand will remove a value or values based on the `field_name` from the
   - value: The value of the custom field (appears like a description)
   - **Optional** inline: Sets the field inline, defaults to false. To set field inline, pass 'inline' as the final argument
 * Examples:
-  - $embed addField name 1 | value 1 | inline
-  - $embed addField someName | test
+  - $embed addField name 1 `|` value 1 `|` inline
+  - $embed addField someName `|` test
 
 This subcommand will add a custom field with "title" `name` and "description" `value`. If inline is passed as the last argument, the field will be inline. If `name` or `value` is missing, no field will be added and the user will be notified. This subcommand is different from `setField` as the custom field is unspecified.
 
@@ -178,25 +178,32 @@ These are the field names as specified by Discord.js.
   - name [value]
   - icon_url [value]
   - url [value]
+
 #### color
 * args
   - [value]
+
 #### description
 * args
   - [value]
+
 #### footer
 * args
   - text [value]
   - icon_url [value]
+
 #### image
 * args
   - url [value]
+
 #### thumbnail
 * args
   - url [value]
+
 #### title
 * args
   - [value]
+
 #### url
 * args
   - [value]
