@@ -33,64 +33,150 @@ async function setLastModified(guildId) {
 }
 
 function help(message, args) {
-  const embed = new Discord.MessageEmbed()
-    .setTitle('$embed Help')
-    .setDescription('Documentation for subcommands related to embed. Callable using ``$embed [subcommand] [*args]``')
-    .addFields(
-      {
-        name: 'list',
-        value: 'Lists all embeds for this server.',
-        inline: false
-      },
-      {
-        name: 'queue [embed_id] [time]',
-        value: 'Queues the embed with the given ``embed_id``, if it exists, to be automatically ' +
-          'sent at the given ``time``.',
-        inline: false
-      },
-      {
-        name: 'show [embed_id]',
-        value: 'Shows the embed with the given ``embed_id``, if it exists.',
-        inline: false
-      },
-      {
-        name: 'new',
-        value: 'Creates a new embed, and immediately begin editing it.',
-        inline: false
-      },
-      {
-        name: 'edit [embed_id]',
-        value: 'Begins editing the embed with the given ``embed_id``, if it exists.',
-        inline: false
-      },
-      {
-        name: 'save',
-        value: 'Saves the currently edited embed, if it exists.',
-        inline: false
-      },
-      {
-        name: 'delete [embed_id]',
-        value: 'Deletes the embed with the given ``embed_id``, if it exists. Provides ' +
-          'a preview of the embed and a confirmation message before deletion. This action ' +
-          'is **NOT** reversible!',
-        inline: false
-      },
-      {
-        name: 'add [field_name] [args]',
-        value: 'Adds a field to the currently edited embed, if it exists.',
-        inline: false
-      },
-      {
-        name: 'update [field_name] [args]',
-        value: 'Updates a field in the currently edited embed, if it exists.',
-        inline: false
-      },
-      {
-        name: 'remove [field_name]',
-        value: 'Removes a field from the currently edited embed, if it exists.',
-        inline: false
-      }
-    );
+  const subcommand = args.shift();
+
+  const embed = new Discord.MessageEmbed();
+
+  if (typeof subcommand !== 'undefined' && subcommand !== null && subcommand === 'editing') {
+    embed
+      .setTitle('``$embed`` Editing Help')
+      .setDescription('Documentation for editing subcommands relating to ``$embed``.')
+      .addFields(
+        {
+          name: 'setField [field_name] [args]',
+          value: 'Adds or edits the field ``field_name`` to the currently edited embed. ' +
+            'User will be notified if no embed is being edited. ' +
+            '\nFor more information about the args, see the section below.' +
+            'The values underneath each ``field_name`` replace [args], with [value] being ' +
+            'the intended values.'
+        },
+        {
+          name: 'deleteField [field_name] [args]',
+          value: 'Removes the field ``field_name`` from the currently edited embed. ' +
+            'User will be notified if no embed is being edited. ' +
+            '\nFor more information about the args, see the section below.' +
+            'The values underneath each ``field_name`` replace [args], with [value] being ' +
+            'optional.'
+        },
+        {
+          name: 'addField [name] | [value] | [inline]?',
+          value: 'Adds a field with the section title ``name`` and value ``value``. ' +
+            'These arguments must be present. Arguments are separated by the | character.' +
+            'Can optionally set the field to appear inline with ``inline`` as the third argument.'
+        },
+        {
+          name: '\u200B',
+          value: '\u200B'
+        },
+        {
+          name: 'author',
+          value: 
+            'name [value]\n' +
+            'icon_url [value]\n' +
+            'url [value]\n',
+          inline: true
+        },
+        {
+          name: 'color',
+          value: '[value]',
+          inline: true
+        },
+        {
+          name: 'description',
+          value: '[value]',
+          inline: true
+        },
+        {
+          name: 'footer',
+          value:
+            'text [value]\n' +
+            'icon_url [value]',
+          inline: true
+        },
+        {
+          name: 'image',
+          value: 'url [value]',
+          inline: true
+        },
+        {
+          name: 'thumbnail',
+          value: 'url [value]',
+          inline: true
+        },
+        {
+          name: 'title',
+          value: '[value]',
+          inline: true
+        },
+        {
+          name: 'url',
+          value: '[value]',
+          inline: true
+        }
+      );
+  } else {
+    embed
+      .setTitle('``$embed`` Help')
+      .setDescription('Documentation for subcommands related to ``$embed``. Callable using ``$embed [subcommand] [*args]``. \n' +
+        'The following are subcommands.')
+      .addFields(
+        {
+          name: 'list',
+          value: 'Lists all embeds for this server.',
+          inline: false
+        },
+        {
+          name: 'queue [embed_id] [time]',
+          value: 'Queues the embed with the given id ``embed_id`` to be automatically sent at ' +
+            'the given ``time``. ' +
+            'User will be notified if no embed with id ``embed_id`` exists.',
+          inline: false
+        },
+        {
+          name: 'show [embed_id]',
+          value: 'Shows the embed with the given id ``embed_id``. ' +
+            'User will be notified if no embed with id ``embed_id`` exists.',
+          inline: false
+        },
+        {
+          name: 'new [embed id]?',
+          value: 'Creates a new embed, and immediately begin editing it. Can provide an optional ' +
+            'argument ``embed_id`` to set a non random id.'
+        },
+        {
+          name: 'edit [embed_id]',
+          value: 'Begins editing the embed with the given id ``embed_id``. ' +
+            'User will be notified if no embed with id ``embed_id`` exists.'
+        },
+        {
+          name: 'save',
+          value: 'Saves the currently edited embed. ' +
+            'User will be notified if no embed is being edited.'
+        },
+        {
+          name: 'cancel',
+          value: 'Reverts all changes done to the currently edited embed. ' +
+            'User will be notified if no embed is being edited. ' +
+            'Provides a confirmation message before reverting changes. ' +
+            'This action is **NOT** reversible!'
+        },
+        {
+          name: 'delete [embed_id]',
+          value: 'Deletes the embed with the given ``embed_id``. ' +
+            'User will be notified if no embed with id ``embed_id`` exists. ' +
+            'Provides a preview of the embed and a confirmation message before deletion. ' +
+            'This action is **NOT** reversible!'
+        },
+        {
+          name: '\u200B',
+          value: '\u200B',
+        },
+        {
+          name: 'Editing embed fields',
+          value: 'To see how to edit embed fields, use ``$embed help editing``.'
+        }
+      );
+  }
 
   message.channel.send(embed);
 }
@@ -576,9 +662,9 @@ async function deleteField(message, args) {
       shouldShow = await removeFieldMap(message, field, ['url'], args);
       break;
     case 'color':
-    case 'url':
     case 'description':
     case 'title':
+    case 'url':
       shouldShow = await removeFieldSimple(message, field);
       break;
     case 'field':
