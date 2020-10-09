@@ -1,6 +1,8 @@
 const firebase = require('firebase/app');
 const { firestore, database } = require('../firestore.js');
 const Discord = require('discord.js');
+const { scheduleEmbed, cancelEmbed } = require('../scheduler.js');
+
 
 function logError(guildId, error) {
   console.error(`[${guildId}] ${error}`);
@@ -244,17 +246,20 @@ async function queueEmbed(message, args) {
     date = new Date(date);
     try {
       const embedRef = firestoreEmbedsRef(guildId).doc(embedId);
-      await embedRef.update({
+      await embedRef.set({
         metadata: {
           channel: channelId,
           time: date.getTime()
         }
-      });
+      }, { merge: true });
       await firestore.doc(`servers/${guildId}`).update({
         queuedEmbeds: firebase.firestore.FieldValue.arrayUnion(embedRef)
       });
+
+      scheduleEmbed(embedRef, date, channelId, guildId, embedId);
       message.channel.send(`Embed with id \`\`${embedId}\`\` queued to show in ${channelId_} on ${date.toLocaleString('en-US')}.`)
         .catch(err => logError(guildId, err));
+      
     } catch(err) {
       logError(guildId, err);
       message.channel.send('Failed to queue embed.')
@@ -273,6 +278,10 @@ async function dequeueEmbed(message, args) {
       firestore.doc(`servers/${guildId}`).update({
         queuedEmbeds: firebase.firestore.FieldValue.arrayRemove(firestoreEmbedsRef(guildId).doc(embedId))
       });
+
+      cancelEmbed(guildId, embedId);
+      message.channel.send(`Embed with id \`\`${embedId}\`\` removed from queue.`)
+        .catch(err => logError(guildId, err));
     } catch(err) {
       logError(guildId, err);
     }
