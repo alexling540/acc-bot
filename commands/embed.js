@@ -22,6 +22,12 @@ async function getEmbedData(message, embedId) {
     return null;
   }
 
+  if (!embedId.match(/[0-9a-zA-Z\-_]+/)) {
+    message.channel.send('Not a valid ``embed_id``.')
+      .catch(err => logError(guildId, err));
+    return null;
+  }
+
   const embedDoc = await firestoreEmbedsRef(message.guild.id).doc(embedId).get();
   if (!embedDoc.exists) {
     message.channel.send(`No such embed with id \`\`${embedId}\`\`.`);
@@ -194,6 +200,7 @@ function help(message, args) {
 
 // work on making a better list
 async function listEmbeds(message) {
+  const guildId = message.guild.id;
   const embedCollection = await firestoreEmbedsRef(message.guild.id).get();
 
   let msg = '';
@@ -203,7 +210,12 @@ async function listEmbeds(message) {
     msg += `${x}.\t${doc.id}\n`;
   });
 
-  message.channel.send(msg);
+  if (msg.length === 0) {
+    msg = 'No embeds found.'
+  }
+
+  message.channel.send(msg)
+  .catch(err => logError(guildId, err));
 }
 
 // TODO: work on this queue, use chron?
@@ -304,6 +316,11 @@ async function newEmbed(message, args) {
 
   const embedId = args.shift();
   if (typeof embedId !== 'undefined') {
+    if (!embedId.match(/[0-9a-zA-Z\-_]+/)) {
+      message.channel.send('Not a valid ``embed_id``.')
+        .catch(err => logError(guildId, err));
+      return;
+    }
 
     const embedExists = (await firestoreEmbedsRef(message.guild.id).doc(embedId).get()).exists;
     if (embedExists) {
@@ -313,8 +330,8 @@ async function newEmbed(message, args) {
     }
   }
 
-  const newId = embedId || (await ref.push()).key.substring(1);
   try {
+    const newId = embedId || (await ref.push()).key.substring(1);
     await ref.update({
       id: newId,
       metadata: {
@@ -334,11 +351,17 @@ async function editEmbed(message, args) {
   const guildId = message.guild.id;
   const ref = databaseEmbedRef(guildId);
 
-  const snapshot = await ref.once('value');
-  if (snapshot.exists()) {
-    message.channel.send('There is already an embed being edited, save that embed before editing another.')
+  try {
+    const snapshot = await ref.once('value');
+    if (snapshot.exists()) {
+      message.channel.send('There is already an embed being edited, save that embed before editing another.')
+        .catch(err => logError(guildId, err));
+      return;
+    }
+  } catch(err) {
+    logError(err);
+    message.channel.send('Unable to edit embed.')
       .catch(err => logError(guildId, err));
-    return;
   }
 
   const embedId = args[0];
@@ -356,6 +379,8 @@ async function editEmbed(message, args) {
         .catch(err => logError(guildId, err));
     } catch(err) {
       logError(guildId, err);
+      message.channel.send('Unable to edit embed.')
+        .catch(err => logError(guildId, err));
     };
   }
 }
@@ -494,33 +519,21 @@ async function setFieldMap(message, field, subcommands, args) {
   return false;
 }
 
-async function setFieldSingleWord(message, field, args) {
+async function setFieldSimple(message, field, args, multi=false) {
   const guildId = message.guild.id;
   const ref = databaseEmbedRef(guildId);
   const fieldRef = ref.child('data').child(field);
 
+  args_ = args[0];
+  if (multi) {
+    args_ = args.join(' ');
+  }
+
   try {
-    await fieldRef.set(args[0]);
+    await fieldRef.set(args_);
     await setLastModified(guildId);
     return true;
   } catch(err) {
-    message.channel.send('Error updating field.')
-      .catch(err => logError(guildId, err));
-    logError(guildId, err);
-  }
-  return false;
-}
-
-async function setFieldMultiWord(message, field, args) {
-  const guildId = message.guild.id;
-  const ref = databaseEmbedRef(guildId);
-  const fieldRef = ref.child('data').child(field);
-
-  try {
-    await fieldRef.set(args.join(' '));
-    await setLastModified(guildId);
-    return true;
-  } catch (err) {
     message.channel.send('Error updating field.')
       .catch(err => logError(guildId, err));
     logError(guildId, err);
@@ -569,11 +582,11 @@ async function setField(message, args) {
       break;
     case 'color':
     case 'url':
-      shouldShow = await setFieldSingleWord(message, field, args);
+      shouldShow = await setFieldSimple(message, field, args);
       break;
     case 'description':
     case 'title':
-      shouldShow = await setFieldMultiWord(message, field, args);
+      shouldShow = await setFieldSimple(message, field, args, true);
       break;
   }
 
