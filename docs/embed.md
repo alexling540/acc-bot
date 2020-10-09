@@ -1,3 +1,5 @@
+[← Home](../)
+
 # Embeds
 
 The `$embed` command lets users create, edit, delete, and schedule embeds. To get a better idea of how this command is structured see the [Discord.js embed docs](https://discordjs.guide/popular-topics/embeds.html#embed-preview).

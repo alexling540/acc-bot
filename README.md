@@ -14,16 +14,22 @@
     + [Grabbing the Firebase Configuration otherwise](#grabbing-the-firebase-configuration-otherwise)
     + [Creating the Firestore database](#creating-the-firestore-database)
     + [Creating the Realtime Database](#creating-the-realtime-database)
-- [Running the app](#running-the-app)
+- [Running the App](#running-the-app)
+- [Deploying to Heroku](#deploying-to-heroku)
+  * [Via Heroku.com](#via-herokucom)
+  * [Via Heroku CLI](#via-heroku-cli)
 
 ## Setup
 
 ### What You Will Need
 - Node.js (minimum Nodev12)
-- Yarn
+- Yarn / npm
+- Google account
+- Heroku account (if deploying to Heroku)
+- Heroku CLI (if deploying via cli)
 
 ### Installing Dependencies
-1. `yarn install`
+1. `yarn install` or with npm `npm install`
 
 ### Environment Variables
 1. Create `.env` file in the project root with the following starter code:
@@ -107,3 +113,8 @@ TBD
 ```
 node bot.js
 ```
+## Deploying to Heroku
+
+### Via Heroku.com
+
+### Via Heroku CLI
