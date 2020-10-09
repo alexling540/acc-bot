@@ -122,21 +122,30 @@ function help(message, args) {
       .addFields(
         {
           name: 'list',
-          value: 'Lists all embeds for this server.',
-          inline: false
+          value: 'Lists all embeds for this server.'
         },
         {
-          name: 'queue [embed_id] [time]',
+          name: 'queue [embed_id] [channel] [time]',
           value: 'Queues the embed with the given id ``embed_id`` to be automatically sent at ' +
-            'the given ``time``. ' +
-            'User will be notified if no embed with id ``embed_id`` exists.',
-          inline: false
+            'the given ``time`` in the given ``channel``. ' +
+            'User will be notified if no embed with id ``embed_id`` exists, if channel is ' +
+            'invalid, or if time is invalid. ' +
+            'For best results, mention the channel (almost guaranteed to be a correct channel). ' +
+            'For quick reference, valid date strings are in the form: ' +
+            '\n\t2020-10-8 11:00 AM CDT' +
+            '\n\t2020 10 8 11:00 AM CDT' +
+            '\n\t2020 Oct 8 11:00 PM CDT' +
+            '\n\t2020 October 8 11:00 PM CDT'
+        },
+        {
+          name: 'dequeue [embed_id]',
+          value: 'Removes the embed with the given id ``embed_id`` from the queue. ' +
+            'Users will be notified if no embed with id ``embed_id`` exists.'
         },
         {
           name: 'show [embed_id]',
           value: 'Shows the embed with the given id ``embed_id``. ' +
-            'User will be notified if no embed with id ``embed_id`` exists.',
-          inline: false
+            'User will be notified if no embed with id ``embed_id`` exists.'
         },
         {
           name: 'new [embed id]?',
@@ -197,7 +206,77 @@ async function listEmbeds(message) {
 
 // TODO: work on this queue, use chron?
 async function queueEmbed(message, args) {
+  const guildId = message.guild.id;
+  const embedId = args.shift();
+  const channelId_ = args.shift();
+  let date = args.join(' ');
 
+  const embedDocData = await getEmbedData(message, embedId);
+
+  if (embedDocData !== null) {
+    if (typeof channelId_ === 'undefined' || channelId_ === null) {
+      message.channel.send('No channel given.')
+        .catch(err => logError(guildId, err));
+      return;
+    }
+    let channelId = channelId_.match(/<#[0-9]+>/);
+    if (channelId === null) {
+      message.channel.send('Invalid channel.')
+        .catch(err => logError(guildId, err));
+      return;
+    }
+    channelId = channelId[0];
+    channelId = channelId.substring(2, channelId.length - 1);
+
+    if (typeof date === 'undefined' || date === null) {
+      message.channel.send('No date given.')
+        .catch(err => logError(guildId, err));
+      return;
+    }
+
+    date = Date.parse(date);
+    if (isNaN(date)) {
+      message.channel.send('Invalid date string.')
+        .catch(err => logError(guildId, err));
+      return;
+    }
+
+    date = new Date(date);
+    try {
+      const embedRef = firestoreEmbedsRef(guildId).doc(embedId);
+      await embedRef.update({
+        metadata: {
+          channel: channelId,
+          time: date.getTime()
+        }
+      });
+      await firestore.doc(`servers/${guildId}`).update({
+        queuedEmbeds: firebase.firestore.FieldValue.arrayUnion(embedRef)
+      });
+      message.channel.send(`Embed with id \`\`${embedId}\`\` queued to show in ${channelId_} on ${date.toLocaleString('en-US')}.`)
+        .catch(err => logError(guildId, err));
+    } catch(err) {
+      logError(guildId, err);
+      message.channel.send('Failed to queue embed.')
+        .catch(err => logError(guildId, err));
+    }
+  }
+}
+
+async function dequeueEmbed(message, args) {
+  const guildId = message.guild.id;
+  let embedId = args[0];
+  const embedDocData = await getEmbedData(message, embedId);
+
+  if (embedDocData !== null) {
+    try {
+      firestore.doc(`servers/${guildId}`).update({
+        queuedEmbeds: firebase.firestore.FieldValue.arrayRemove(firestoreEmbedsRef(guildId).doc(embedId))
+      });
+    } catch(err) {
+      logError(guildId, err);
+    }
+  }
 }
 
 async function showEmbed(message, args) {
@@ -694,6 +773,9 @@ module.exports = {
         break;
       case 'queue':
         queueEmbed(message, args);
+        break;
+      case 'dequeue':
+        dequeueEmbed(message, args);
         break;
       case 'show':
         showEmbed(message, args);
