@@ -4,7 +4,17 @@
 
 The `$embed` command lets users create, edit, delete, and schedule embeds. To get a better idea of how this command is structured see the [Discord.js embed docs](https://discordjs.guide/popular-topics/embeds.html#embed-preview).
 
-## Subcommand Overview
+## Usage
+* Signature: `$embed [subcommand] [args]?`
+* Parameters:
+  - subcommand: [See list of subcommands](#subcommands)
+  - args: Depends on the subcommand
+* Examples:
+  - $embed list
+  - $embed edit id_num-1
+
+## Subcommands
+* [help](#help)
 * [list](#list)
 * [queue](#queue)
 * [dequeue](#dequeue)
@@ -18,9 +28,19 @@ The `$embed` command lets users create, edit, delete, and schedule embeds. To ge
 * [deleteField](#deletefield)
 * [addField](#addfield)
 
-## Subcommands
-
 For all `embed_id` parameters, the naming rule is as follows: The id must be alphanumeric and may include dashes (-) and underscores (_) but no other special characters.
+
+### help
+* Signature: `help [editing]?`
+* Parameters:
+  - **Optional** editing: If `editing` is passed, shows only field editing related subcommands
+* Examples:
+  - $embed help
+  - $embed help editing
+
+The help function for the embed command, will display a summarized version of the documentation found on this page.
+
+[↑ Top](#embeds)
 
 ### list
 * Signature: `list`
@@ -145,7 +165,7 @@ This subcommand will set a value based on `args` to the field `field_name`. If t
 [↑ Top](#embeds)
 
 ### deleteField
-* Signature: `deleteField [field_name] [args]`
+* Signature: `deleteField [field_name] [args]?`
   - field_name: A specific field's name
   - args: Specific arguments given to the `field_name`, see [below](#field-name) for more details.
 * Examples:

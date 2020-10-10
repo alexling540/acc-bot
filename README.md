@@ -16,17 +16,24 @@
     + [Creating the Realtime Database](#creating-the-realtime-database)
 - [Running the App](#running-the-app)
 - [Deploying to Heroku](#deploying-to-heroku)
-  * [Via Heroku.com](#via-herokucom)
+  * [Creating a new App](#creating-a-new-app)
+  * [Via GitHub](#via-github)
   * [Via Heroku CLI](#via-heroku-cli)
+  * [Setting Configuration Vars](#setting-configuration-vars)
+  * [Configuring Workers](#configuring-workers)
 
 ## Setup
 
 ### What You Will Need
 - Node.js (minimum Nodev12)
 - Yarn / npm
+- Discord account
 - Google account
 - Heroku account (if deploying to Heroku)
 - Heroku CLI (if deploying via cli)
+
+### Clone This Repository
+1. `git clone https://github.com/alexling540/acc-bot.git`
 
 ### Installing Dependencies
 1. `yarn install` or with npm `npm install`
@@ -45,6 +52,8 @@ This file will be filled in with secret keys later.
 
 ### Setting Up the Discord Bot in the Discord Developers Portal
 https://anidiots.guide/getting-started/getting-started-long-version
+
+In this section, you will need a Discord account. If you don't have one, you can create one [here](https://discord.com/register).
 
 #### Making a New Application
 1. Navigate to https://discord.com/developers/applications and log in if necessary.
@@ -68,6 +77,8 @@ https://anidiots.guide/getting-started/getting-started-long-version
 
 ### Setting Up Firebase
 https://firebase.google.com/docs/web/setup
+
+In this section, you will need a Google account. If you don't have one, you can create one [here](https://accounts.google.com/signup/v2/webcreateaccount?continue=https%3A%2F%2Fwww.google.com%2F&hl=en&gmb=exp&biz=false&flowName=GlifWebSignIn&flowEntry=SignUp).
 
 #### Creating a Firebase Project
 1. Navigate to https://firebase.google.com/. You will need a Google Account for this section.
@@ -113,8 +124,43 @@ TBD
 ```
 node bot.js
 ```
-## Deploying to Heroku
 
-### Via Heroku.com
+## Deploying to Heroku
+In this section, you will need a Heroku account. If you don't have one, you can create one [here](https://signup.heroku.com/).
+
+### Creating a new App
+1. Log into your Heroku account.
+1. In the top right, click `New App` and selected `Create New App`
+1. Give your app a name and select a region.
+1. You should now be in the "Deploy" tab.
+
+### Via GitHub
+This section requires that you have your own repository on GitHub. If you don't have a repository on GitHub (i.e. locally), consider using the Heroku CLI instead.
+
+1. Log into your Heroku account.
+1. Click on your app from the listed apps.
+1. Click on the "Deploy" tab.
+1. In the "Deployment method" section, select the GitHub icon.
+1. In the "Connect to GitHub" section, select the user or organization, then search for your repo.
+1. When your repo shows up, click `Connect`.
 
 ### Via Heroku CLI
+This section requires that you have Heroku CLI installed. If you don't, you can follow the steps [here](https://devcenter.heroku.com/articles/heroku-cli).
+
+1. Log into your Heroku account.
+1. Click on your app from the listed apps.
+1. Click on the "Deploy" tab.
+1. In the "Deployment method" section, the selected icon should be Heroku Git. If not, select it.
+1. In the terminal, log into your Heroku account using `heroku login`.
+1. Then in the terminal, type `heroku git:remote -a <your app name>`, where `<your app name>` is the currently selected app.
+
+### Setting Configuration Vars
+1. In your app, click on the "Settings" tab.
+1. In the "Config Vars" section, click `Reveal Config Vars`.
+1. From the `.env` file, copy paste and add every key value pair into the inputs.
+
+### Configuring Workers
+1. In your app, click on the "Resources" tab.
+1. You should see a "web" and "worker" Dyno.
+1. If the "worker" dyno isn't on, click the pencil and click the switch to turn on the dyno.
+1. Click ``Confirm`` to save.
