@@ -26,7 +26,7 @@
 
 ### What You Will Need
 - Node.js (minimum Nodev12)
-- Yarn / npm
+- Yarn
 - Discord account
 - Google account
 - Heroku account (if deploying to Heroku)

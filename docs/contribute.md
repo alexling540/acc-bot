@@ -2,7 +2,7 @@
 
 # Contributing
 
-Before contributing, make sure you read the README.md in the main repository to set up your environment properly. As a reminder you will need Node.js (minimum version 12), a Node package manager (Yarn is preferred, but npm is ok), an a Google account at minimum. If deploying to Heroku, you will also need a Heroku account and optionally, the Heroku CLI.
+Before contributing, make sure you read the README.md in the main repository to set up your environment properly. As a reminder you will need Node.js (minimum version 12), a Node package manager (Yarn is preferred), and a Google account at minimum. If deploying to Heroku, you will also need a Heroku account and optionally, the Heroku CLI.
 
 ## Project Structure
 
